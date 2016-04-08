@@ -27,14 +27,11 @@ class NetworkPerformance(object):
 		cookie = r.cookies
 		csrftoken = cookie['csrftoken']
 
-		# Package up the form data
-		form_data = {'csrfmiddlewaretoken':csrftoken, 'username':username, 'password':password}
-
 		# Add the crsftoken to the log in data
 		self.logindata['csrfmiddlewaretoken'] = csrftoken
 
 		# Post the form data with the cookie to the submissionURL
-		r = requests.post(self.posturl, data=form_data, cookies=cookie)
+		r = requests.post(self.posturl, data=self.logindata, cookies=cookie)
  		
  		# Optional access to response data
 		return r
