@@ -10,15 +10,15 @@ class NetworkPerformance(object):
 		self.testurl = testurl
 		self.logindata = logindata
 		self.timeData = []
-		self.goodput = []
+		self.throughput = []
 
 	# Return the average RTT
 	def getRTT(self):
 		return sum(self.timeData)/len(self.timeData)
 
 	# Return the average goodput
-	def getGoodPut(self):
-		return sum(self.goodput)/len(self.goodput)	
+	def getThroughut(self):
+		return sum(self.throughput)/len(self.throughput)	
 
 	# Authentication method
 	def authenticate(self):
@@ -53,9 +53,9 @@ class NetworkPerformance(object):
 				# Get byte size of request and response objects
 				responseSize = sys.getsizeof(r)
 				requestSize = sys.getsizeof(requests.Request('GET', self.testurl).prepare())
-				
+		
 				# Convert bytes to bits and compute bits transferred per second
-				self.goodput.append( (responseSize + requestSize) * 8 / (duration))
+				self.throughput.append( (responseSize + requestSize) * 8 / (duration))
 
 			# The program stops if there is a keyboard interuption
 			except KeyboardInterrupt:
@@ -81,7 +81,7 @@ class NetworkPerformance(object):
 
 		if len(self.timeData) != 0:
 			print "\nAverage request time: " + str(self.getRTT())
-			print "Average goodput: " + str(self.getGoodPut())
+			print "Average goodput: " + str(self.getThroughput())
 		else:
 			print "\nNo data collected yet"
 
@@ -115,6 +115,8 @@ if __name__ == "__main__":
 
 	# Test the network
 	temp = test.testNetwork()
+	temp = test.authenticate()
+
 
 
 

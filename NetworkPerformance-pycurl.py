@@ -57,15 +57,16 @@ class NetworkPerformance(object):
 				self.c.setopt(pycurl.URL, testurl)
 				self.c.perform()
 
-				# Get the time for this request/response
-				duration = self.c.getinfo(self.c.TOTAL_TIME)
+				# The duration we are interested in is the time taken for the data to be transferred
+				# So we take the total time and subtract the pre transfer time
+				duration = self.c.getinfo(self.c.TOTAL_TIME) - self.c.getinfo(self.c.PRETRANSFER_TIME)
 				self.timeData.append(duration)
 
-				# Get the average upload/download speeds in bytes per second
-				uploadSpeed = self.c.getinfo(pycurl.SPEED_UPLOAD)
-				downloadSpeed = self.c.getinfo(pycurl.SPEED_DOWNLOAD)
+				# Get data recieved excluding headers
+				dataRecieved = self.c.getinfo(pycurl.SIZE_DOWNLOAD)
 
-				self.goodput.append( (uploadSpeed + downloadSpeed)  / 2)
+				# Store the bits per second convert to bits
+				self.goodput.append( dataRecieved * 8/ duration)
 
 			# The program stops if there is a keyboard interuption
 			except KeyboardInterrupt:
@@ -85,7 +86,7 @@ class NetworkPerformance(object):
 			
 			# Wait 30s before performing another request, try-except allows for key interupt
 			try:
-				time.sleep(30)
+				time.sleep(1)
 			except KeyboardInterrupt:
 				break
 
@@ -129,3 +130,4 @@ if __name__ == "__main__":
 	# Test the network
 	temp = test.testNetwork()
 
+	print test.timeData, test.goodput
