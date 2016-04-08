@@ -1,5 +1,5 @@
 from __future__ import division
-import requests, time, sys
+import pycurl, time, urllib
 from matplotlib import pyplot as plt
 
 class NetworkPerformance(object):
@@ -11,6 +11,8 @@ class NetworkPerformance(object):
 		self.logindata = logindata
 		self.timeData = []
 		self.goodput = []
+		# Create a Curl object
+		self.c = pycurl.Curl()
 
 	# Return the average RTT
 	def getRTT(self):
@@ -22,21 +24,28 @@ class NetworkPerformance(object):
 
 	# Authentication method
 	def authenticate(self):
-		r = requests.get(self.geturl)
 
-		cookie = r.cookies
-		csrftoken = cookie['csrftoken']
+		# Suppress output to terminal
+		self.c.setopt(pycurl.WRITEFUNCTION, lambda x: None)
 
-		# Add the crsftoken to the log in data
+		# Turn on cookies
+		self.c.setopt(pycurl.COOKIEFILE, "")
+		self.c.setopt(pycurl.URL, geturl)
+		self.c.perform()
+
+		# Hack to get the csrf token
+		csrftoken =  self.c.getinfo(pycurl.INFO_COOKIELIST)[0].split("\t")[-1]
+
+		# # Add the crsftoken to the log in data
 		self.logindata['csrfmiddlewaretoken'] = csrftoken
 
-		# Post the form data with the cookie to the submissionURL
-		r = requests.post(self.posturl, data=self.logindata, cookies=cookie)
- 		
- 		# Optional access to response data
-		return r
+		self.c.setopt(pycurl.URL, self.posturl)
+		self.c.setopt(pycurl.POSTFIELDS, urllib.urlencode(self.logindata))
 
-	# Main method to test network performance
+		self.c.perform()
+
+
+	# # Main method to test network performance
 	def testNetwork(self, plot = False):
 		
 		# Authenticate first
@@ -45,26 +54,27 @@ class NetworkPerformance(object):
 		while True:
 	
 			try: 
-				start = time.time()
-				r  = requests.get(self.testurl)
-				duration = time.time() - start
+				self.c.setopt(pycurl.URL, testurl)
+				self.c.perform()
+
+				# Get the time for this request/response
+				duration = self.c.getinfo(self.c.TOTAL_TIME)
 				self.timeData.append(duration)
 
-				# Get byte size of request and response objects
-				responseSize = sys.getsizeof(r)
-				requestSize = sys.getsizeof(requests.Request('GET', self.testurl).prepare())
-				
-				# Convert bytes to bits and compute bits transferred per second
-				self.goodput.append( (responseSize + requestSize) * 8 / (duration))
+				# Get the average upload/download speeds in bytes per second
+				uploadSpeed = self.c.getinfo(pycurl.SPEED_UPLOAD)
+				downloadSpeed = self.c.getinfo(pycurl.SPEED_DOWNLOAD)
+
+				self.goodput.append( (uploadSpeed + downloadSpeed)  / 2)
 
 			# The program stops if there is a keyboard interuption
 			except KeyboardInterrupt:
 				break
 
 			# If the connection is dropped
-			except requests.exceptions.ConnectionError:
+			except Exception, e:
 
-				print "Connection Error"
+				print "Connection Error: " + str(e)
 				
 				# We try and authenticate again
 				try:
@@ -75,7 +85,7 @@ class NetworkPerformance(object):
 			
 			# Wait 30s before performing another request, try-except allows for key interupt
 			try:
-				time.sleep(1)
+				time.sleep(30)
 			except KeyboardInterrupt:
 				break
 
@@ -88,6 +98,9 @@ class NetworkPerformance(object):
 		if plot:
 			self.plotData()
 
+		self.c.close()
+
+	# Optional plotting method to see network performance visually
 	def plotData(self):
 		
 		plt.hist(self.timeData, label='Round time trip duration')
@@ -115,8 +128,4 @@ if __name__ == "__main__":
 
 	# Test the network
 	temp = test.testNetwork()
-
-
-
-
 
