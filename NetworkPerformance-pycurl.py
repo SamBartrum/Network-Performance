@@ -1,10 +1,10 @@
 from __future__ import division
-import pycurl, time, urllib
+import pycurl, time, urllib, sys
 from matplotlib import pyplot as plt
 
 class NetworkPerformance(object):
 
-	def __init__(self, geturl, posturl, testurl, logindata):
+	def __init__(self, geturl, posturl, testurl, logindata, delay = 30):
 		self.geturl = geturl
 		self.posturl = posturl
 		self.testurl = testurl
@@ -13,6 +13,9 @@ class NetworkPerformance(object):
 		self.goodput = []
 		# Create a Curl object
 		self.c = pycurl.Curl()
+
+		# Option to allow for more frequent requests
+		self.delay = delay
 
 	# Return the average RTT
 	def getRTT(self):
@@ -33,7 +36,7 @@ class NetworkPerformance(object):
 		self.c.setopt(pycurl.URL, geturl)
 		self.c.perform()
 
-		# Hack to get the csrf token
+		# Get the csrf token
 		csrftoken =  self.c.getinfo(pycurl.INFO_COOKIELIST)[0].split("\t")[-1]
 
 		# # Add the crsftoken to the log in data
@@ -42,22 +45,23 @@ class NetworkPerformance(object):
 		self.c.setopt(pycurl.URL, self.posturl)
 		self.c.setopt(pycurl.POSTFIELDS, urllib.urlencode(self.logindata))
 
+		# Perorm the post request
 		self.c.perform()
 
 
-	# # Main method to test network performance
+	# Main method to test network performance
 	def testNetwork(self, plot = False):
 		
 		# Authenticate first
 		self.authenticate()
-
+		count = 0
 		while True:
 	
 			try: 
 				self.c.setopt(pycurl.URL, testurl)
 				self.c.perform()
 
-				# The duration we are interested in is the time taken for the data to be transferred
+				# The duration we are interested in is the time taken for the data to be transferred in the response
 				# So we take the total time and subtract the pre transfer time
 				duration = self.c.getinfo(self.c.TOTAL_TIME) - self.c.getinfo(self.c.PRETRANSFER_TIME)
 				self.timeData.append(duration)
@@ -65,8 +69,14 @@ class NetworkPerformance(object):
 				# Get data recieved excluding headers
 				dataRecieved = self.c.getinfo(pycurl.SIZE_DOWNLOAD)
 
-				# Store the bits per second convert to bits
+				# Convert to bits per second
 				self.goodput.append( dataRecieved * 8/ duration)
+
+				count += 1 
+
+				# Output the number of requests made, makes it easier to wait if you know somthing is happening
+				print "Number of requests made: " + str(count), "\r",
+				sys.stdout.flush()
 
 			# The program stops if there is a keyboard interuption
 			except KeyboardInterrupt:
@@ -84,15 +94,17 @@ class NetworkPerformance(object):
 					print "Authentication error"
 					break
 			
-			# Wait 30s before performing another request, try-except allows for key interupt
+			# Wait a duration before performing another request, try-except allows for key interupt during this period
 			try:
-				time.sleep(1)
+				time.sleep(self.delay)
 			except KeyboardInterrupt:
 				break
 
+		# Finally print out the results
 		if len(self.timeData) != 0:
-			print "\nAverage request time: " + str(self.getRTT())
-			print "Average goodput: " + str(self.getGoodPut())
+			print "\nNumber of requests made: " + str(count) 
+			print "Average request time: " + str(self.getRTT()) + " seconds"
+			print "Average goodput: " + str(self.getGoodPut()) + " bits/second"
 		else:
 			print "\nNo data collected yet"
 
@@ -130,4 +142,3 @@ if __name__ == "__main__":
 	# Test the network
 	temp = test.testNetwork()
 
-	print test.timeData, test.goodput

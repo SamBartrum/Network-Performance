@@ -41,7 +41,7 @@ class NetworkPerformance(object):
 		
 		# Authenticate first
 		self.authenticate()
-
+		count = 0
 		while True:
 	
 			try: 
@@ -56,6 +56,13 @@ class NetworkPerformance(object):
 		
 				# Convert bytes to bits and compute bits transferred per second
 				self.throughput.append( (responseSize + requestSize) * 8 / (duration))
+
+				count += 1
+
+				# Output the number of requests made, makes it easier to wait if you know somthing is happening
+				print "Number of requests made: " + str(count), "\r",
+				sys.stdout.flush()
+
 
 			# The program stops if there is a keyboard interuption
 			except KeyboardInterrupt:
